@@ -27,6 +27,9 @@ pub fn build(b: *std.Build) !void {
     exe.linkLibC();
     exe.addIncludePath(b.path("src/deps/libgit2/include"));
     exe.linkLibrary(git2.step);
+    exe.root_module.addAnonymousImport("xitui", .{
+        .root_source_file = b.path("../xitui/src/xitui.zig"),
+    });
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
@@ -45,6 +48,9 @@ pub fn build(b: *std.Build) !void {
     unit_tests.linkLibC();
     unit_tests.addIncludePath(b.path("src/deps/libgit2/include"));
     unit_tests.linkLibrary(git2.step);
+    unit_tests.root_module.addAnonymousImport("xitui", .{
+        .root_source_file = b.path("../xitui/src/xitui.zig"),
+    });
 
     const run_unit_tests = b.addRunArtifact(unit_tests);
     const test_step = b.step("test", "Run unit tests");

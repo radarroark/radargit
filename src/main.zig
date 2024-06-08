@@ -3,16 +3,17 @@
 //! the git CLI, right?
 
 const std = @import("std");
-const term = @import("./terminal.zig");
-const wgt = @import("./widget.zig");
-const Grid = @import("./grid.zig").Grid;
-const Focus = @import("./focus.zig").Focus;
+const xitui = @import("xitui");
+const term = xitui.terminal;
+const wgt = xitui.widget;
+const layout = xitui.layout;
+const inp = xitui.input;
+const Grid = xitui.grid.Grid;
+const Focus = xitui.focus.Focus;
 const g_diff = @import("./git_diff.zig");
 const g_log = @import("./git_log.zig");
 const g_stat = @import("./git_status.zig");
 const g_ui = @import("./git_ui.zig");
-const layout = @import("./layout.zig");
-const inp = @import("./input.zig");
 
 const c = @cImport({
     @cInclude("git2.h");

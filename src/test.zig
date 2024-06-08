@@ -1,7 +1,6 @@
 const std = @import("std");
 const main = @import("./main.zig");
 const g_ui = @import("./git_ui.zig");
-const ndslice = @import("./ndslice.zig");
 
 const c = @cImport({
     @cInclude("git2.h");
