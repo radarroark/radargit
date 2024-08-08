@@ -73,78 +73,6 @@ pub const Widget = union(enum) {
     }
 };
 
-fn tick(allocator: std.mem.Allocator, root: *Widget, last_grid_maybe: *?Grid, last_size: *layout.Size) !void {
-    const root_size = layout.Size{ .width = term.terminal.size.width, .height = term.terminal.size.height };
-    if (root_size.width == 0 or root_size.height == 0) {
-        return;
-    }
-
-    if (last_grid_maybe.*) |*last_grid| {
-        var force_refresh = false;
-        if (last_size.*.width != root_size.width or last_size.*.height != root_size.height) {
-            force_refresh = true;
-        } else if (root.getGrid()) |grid| {
-            if (last_grid.size.width != grid.size.width or last_grid.size.height != grid.size.height) {
-                force_refresh = true;
-            }
-        }
-        if (force_refresh) {
-            last_grid.deinit();
-            last_grid_maybe.* = null;
-        }
-    }
-
-    if (last_grid_maybe.*) |last_grid| {
-        if (root.getGrid()) |grid| {
-            // clear cells that are in last grid but not current grid
-            for (0..last_grid.size.height) |y| {
-                for (0..last_grid.size.width) |x| {
-                    if (grid.cells.items[try grid.cells.at(.{ y, x })].rune == null) {
-                        try term.terminal.write(" ", x, y);
-                    }
-                }
-            }
-            // render current grid
-            for (0..grid.size.height) |y| {
-                for (0..grid.size.width) |x| {
-                    if (grid.cells.items[try grid.cells.at(.{ y, x })].rune) |rune| {
-                        try term.terminal.write(rune, x, y);
-                    }
-                }
-            }
-        }
-    } else {
-        try root.build(.{
-            .min_size = .{ .width = null, .height = null },
-            .max_size = .{ .width = root_size.width, .height = root_size.height },
-        }, root.getFocus());
-        try term.clearRect(term.terminal.core.tty.writer(), 0, 0, root_size);
-        last_size.* = root_size;
-
-        if (root.getGrid()) |grid| {
-            last_grid_maybe.* = try Grid.initFromGrid(allocator, grid, grid.size, 0, 0);
-            for (0..grid.size.height) |y| {
-                for (0..grid.size.width) |x| {
-                    if (grid.cells.items[try grid.cells.at(.{ y, x })].rune) |rune| {
-                        try term.terminal.write(rune, x, y);
-                    }
-                }
-            }
-        }
-    }
-
-    while (try term.terminal.readKey()) |key| {
-        if (key == .codepoint and key.codepoint == 'q') {
-            return error.TerminalQuit;
-        }
-        try root.input(key, root.getFocus());
-    }
-    try root.build(.{
-        .min_size = .{ .width = null, .height = null },
-        .max_size = .{ .width = root_size.width, .height = root_size.height },
-    }, root.getFocus());
-}
-
 pub fn main() !void {
     // start libgit
     _ = c.git_libgit2_init();
@@ -179,12 +107,12 @@ pub fn main() !void {
     term.terminal = try term.Terminal.init(allocator);
     defer term.terminal.deinit();
 
-    var last_grid_maybe: ?Grid = null;
-    defer if (last_grid_maybe) |*last_grid| last_grid.deinit();
     var last_size = layout.Size{ .width = 0, .height = 0 };
+    var last_grid = try Grid.init(allocator, last_size);
+    defer last_grid.deinit();
 
     while (true) {
-        tick(allocator, &root, &last_grid_maybe, &last_size) catch |err| {
+        term.terminal.render(&root, &last_grid, &last_size) catch |err| {
             switch (err) {
                 error.TerminalQuit => break,
                 else => return err,
