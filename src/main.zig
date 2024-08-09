@@ -112,12 +112,24 @@ pub fn main() !void {
     defer last_grid.deinit();
 
     while (true) {
-        term.terminal.render(&root, &last_grid, &last_size) catch |err| {
-            switch (err) {
-                error.TerminalQuit => break,
-                else => return err,
+        // render to tty
+        try term.terminal.render(&root, &last_grid, &last_size);
+
+        // process any inputs
+        while (try term.terminal.readKey()) |key| {
+            if (key == .codepoint and key.codepoint == 'q') {
+                return;
             }
-        };
-        std.time.sleep(5000000); // TODO: do variable sleep with target frame rate
+            try root.input(key, root.getFocus());
+        }
+
+        // rebuild widget
+        try root.build(.{
+            .min_size = .{ .width = null, .height = null },
+            .max_size = .{ .width = last_size.width, .height = last_size.height },
+        }, root.getFocus());
+
+        // TODO: do variable sleep with target frame rate
+        std.time.sleep(5000000);
     }
 }
