@@ -172,7 +172,7 @@ pub fn GitStatusList(comptime Widget: type) type {
                             .page_up => {
                                 if (self.getGrid()) |grid| {
                                     const half_count = (grid.size.height / 3) / 2;
-                                    break :blk current_index - half_count;
+                                    break :blk current_index -| half_count;
                                 }
                             },
                             .page_down => {
