@@ -615,7 +615,7 @@ pub fn GitStatus(comptime Widget: type) type {
                         try box.children.put(status_tabs.getFocus().id, .{ .widget = .{ .git_status_tabs = status_tabs }, .rect = null, .min_size = null });
                     },
                     .status_content => {
-                        var stack = g_ui.GitUIStack(Widget).init(allocator);
+                        var stack = wgt.Stack(Widget).init(allocator);
                         errdefer stack.deinit();
 
                         inline for (@typeInfo(IndexKind).Enum.fields) |index_kind_field| {
@@ -625,7 +625,7 @@ pub fn GitStatus(comptime Widget: type) type {
                             try stack.children.put(status_content.getFocus().id, .{ .git_status_content = status_content });
                         }
 
-                        try box.children.put(stack.getFocus().id, .{ .widget = .{ .git_ui_stack = stack }, .rect = null, .min_size = null });
+                        try box.children.put(stack.getFocus().id, .{ .widget = .{ .stack = stack }, .rect = null, .min_size = null });
                     },
                 }
             }
@@ -648,7 +648,7 @@ pub fn GitStatus(comptime Widget: type) type {
         pub fn build(self: *GitStatus(Widget), constraint: layout.Constraint, root_focus: *Focus) !void {
             self.clearGrid();
             const status_tabs = &self.box.children.values()[@intFromEnum(FocusKind.status_tabs)].widget.git_status_tabs;
-            const stack = &self.box.children.values()[@intFromEnum(FocusKind.status_content)].widget.git_ui_stack;
+            const stack = &self.box.children.values()[@intFromEnum(FocusKind.status_content)].widget.stack;
             if (status_tabs.getSelectedIndex()) |index| {
                 stack.getFocus().child_id = stack.children.keys()[index];
             }
@@ -670,8 +670,8 @@ pub fn GitStatus(comptime Widget: type) type {
                                     try status_tabs.input(key, root_focus);
                                 }
                             },
-                            .git_ui_stack => {
-                                const stack = &child.git_ui_stack;
+                            .stack => {
+                                const stack = &child.stack;
                                 if (stack.getSelected()) |selected_widget| {
                                     if (key == .arrow_up and selected_widget.git_status_content.scrolledToTop()) {
                                         break :blk @intFromEnum(FocusKind.status_tabs);
@@ -686,7 +686,7 @@ pub fn GitStatus(comptime Widget: type) type {
                     };
 
                     if (index == @intFromEnum(FocusKind.status_content)) {
-                        if (self.box.children.values()[@intFromEnum(FocusKind.status_content)].widget.git_ui_stack.getSelected()) |selected_widget| {
+                        if (self.box.children.values()[@intFromEnum(FocusKind.status_content)].widget.stack.getSelected()) |selected_widget| {
                             if (selected_widget.git_status_content.getGrid() == null) {
                                 index = @intFromEnum(FocusKind.status_tabs);
                             }

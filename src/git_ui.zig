@@ -104,72 +104,6 @@ pub fn GitUITabs(comptime Widget: type) type {
     };
 }
 
-pub fn GitUIStack(comptime Widget: type) type {
-    return struct {
-        focus: Focus,
-        children: std.AutoArrayHashMap(usize, Widget),
-
-        pub fn init(allocator: std.mem.Allocator) GitUIStack(Widget) {
-            return .{
-                .focus = Focus.init(allocator),
-                .children = std.AutoArrayHashMap(usize, Widget).init(allocator),
-            };
-        }
-
-        pub fn deinit(self: *GitUIStack(Widget)) void {
-            self.focus.deinit();
-            for (self.children.values()) |*child| {
-                child.deinit();
-            }
-            self.children.deinit();
-        }
-
-        pub fn build(self: *GitUIStack(Widget), constraint: layout.Constraint, root_focus: *Focus) !void {
-            self.clearGrid();
-            self.getFocus().clear();
-            if (self.getSelected()) |selected_widget| {
-                try selected_widget.build(constraint, root_focus);
-                if (selected_widget.getGrid()) |child_grid| {
-                    try self.getFocus().addChild(selected_widget.getFocus(), child_grid.size, 0, 0);
-                }
-            }
-        }
-
-        pub fn input(self: *GitUIStack(Widget), key: inp.Key, root_focus: *Focus) !void {
-            if (self.getSelected()) |selected_widget| {
-                try selected_widget.input(key, root_focus);
-            }
-        }
-
-        pub fn clearGrid(self: *GitUIStack(Widget)) void {
-            if (self.getSelected()) |selected_widget| {
-                selected_widget.clearGrid();
-            }
-        }
-
-        pub fn getGrid(self: GitUIStack(Widget)) ?Grid {
-            if (self.getSelected()) |selected_widget| {
-                return selected_widget.getGrid();
-            } else {
-                return null;
-            }
-        }
-
-        pub fn getFocus(self: *GitUIStack(Widget)) *Focus {
-            return &self.focus;
-        }
-
-        pub fn getSelected(self: GitUIStack(Widget)) ?*Widget {
-            if (self.focus.child_id) |child_id| {
-                if (self.children.getIndex(child_id)) |current_index| {
-                    return &self.children.values()[current_index];
-                }
-            }
-            return null;
-        }
-    };
-}
-
 pub fn GitUI(comptime Widget: type) type {
     return struct {
         box: wgt.Box(Widget),
@@ -189,7 +123,7 @@ pub fn GitUI(comptime Widget: type) type {
                         try box.children.put(git_ui_tabs.getFocus().id, .{ .widget = .{ .git_ui_tabs = git_ui_tabs }, .rect = null, .min_size = null });
                     },
                     .stack => {
-                        var stack = GitUIStack(Widget).init(allocator);
+                        var stack = wgt.Stack(Widget).init(allocator);
                         errdefer stack.deinit();
 
                         {
@@ -204,7 +138,7 @@ pub fn GitUI(comptime Widget: type) type {
                             try stack.children.put(git_status.getFocus().id, .{ .git_status = git_status });
                         }
 
-                        try box.children.put(stack.getFocus().id, .{ .widget = .{ .git_ui_stack = stack }, .rect = null, .min_size = null });
+                        try box.children.put(stack.getFocus().id, .{ .widget = .{ .stack = stack }, .rect = null, .min_size = null });
                     },
                 }
             }
@@ -223,7 +157,7 @@ pub fn GitUI(comptime Widget: type) type {
         pub fn build(self: *GitUI(Widget), constraint: layout.Constraint, root_focus: *Focus) !void {
             self.clearGrid();
             const git_ui_tabs = &self.box.children.values()[@intFromEnum(FocusKind.tabs)].widget.git_ui_tabs;
-            const git_ui_stack = &self.box.children.values()[@intFromEnum(FocusKind.stack)].widget.git_ui_stack;
+            const git_ui_stack = &self.box.children.values()[@intFromEnum(FocusKind.stack)].widget.stack;
             if (git_ui_tabs.getSelectedIndex()) |index| {
                 git_ui_stack.getFocus().child_id = git_ui_stack.children.keys()[index];
             }
@@ -242,8 +176,8 @@ pub fn GitUI(comptime Widget: type) type {
                                 .git_ui_tabs => {
                                     try child.input(key, root_focus);
                                 },
-                                .git_ui_stack => {
-                                    if (child.git_ui_stack.getSelected()) |selected_widget| {
+                                .stack => {
+                                    if (child.stack.getSelected()) |selected_widget| {
                                         switch (selected_widget.*) {
                                             .git_log => {
                                                 if (selected_widget.git_log.scrolledToTop()) {
@@ -271,7 +205,7 @@ pub fn GitUI(comptime Widget: type) type {
                                 .git_ui_tabs => {
                                     index = @intFromEnum(FocusKind.stack);
                                 },
-                                .git_ui_stack => {
+                                .stack => {
                                     try child.input(key, root_focus);
                                 },
                                 else => {},

@@ -24,6 +24,7 @@ pub const Widget = union(enum) {
     box: wgt.Box(Widget),
     text_box: wgt.TextBox(Widget),
     scroll: wgt.Scroll(Widget),
+    stack: wgt.Stack(Widget),
     git_diff: g_diff.GitDiff(Widget),
     git_commit_list: g_log.GitCommitList(Widget),
     git_log: g_log.GitLog(Widget),
@@ -33,7 +34,6 @@ pub const Widget = union(enum) {
     git_status_content: g_stat.GitStatusContent(Widget),
     git_status: g_stat.GitStatus(Widget),
     git_ui_tabs: g_ui.GitUITabs(Widget),
-    git_ui_stack: g_ui.GitUIStack(Widget),
     git_ui: g_ui.GitUI(Widget),
 
     pub fn deinit(self: *Widget) void {
