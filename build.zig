@@ -28,9 +28,14 @@ pub fn build(b: *std.Build) !void {
         exe.linkLibC();
         exe.addIncludePath(b.path("deps/libgit2/include"));
         exe.linkLibrary(git2.step);
-        exe.root_module.addAnonymousImport("xitui", .{
-            .root_source_file = b.path("../xitui/src/lib.zig"),
+        //exe.root_module.addAnonymousImport("xitui", .{
+        //    .root_source_file = b.path("../xitui/src/lib.zig"),
+        //});
+        const xitui = b.dependency("xitui", .{
+            .target = target,
+            .optimize = optimize,
         });
+        exe.root_module.addImport("xitui", xitui.module("xitui"));
         b.installArtifact(exe);
 
         const run_cmd = b.addRunArtifact(exe);
@@ -51,9 +56,14 @@ pub fn build(b: *std.Build) !void {
         unit_tests.linkLibC();
         unit_tests.addIncludePath(b.path("deps/libgit2/include"));
         unit_tests.linkLibrary(git2.step);
-        unit_tests.root_module.addAnonymousImport("xitui", .{
-            .root_source_file = b.path("../xitui/src/lib.zig"),
+        //unit_tests.root_module.addAnonymousImport("xitui", .{
+        //    .root_source_file = b.path("../xitui/src/lib.zig"),
+        //});
+        const xitui = b.dependency("xitui", .{
+            .target = target,
+            .optimize = optimize,
         });
+        unit_tests.root_module.addImport("xitui", xitui.module("xitui"));
 
         const run_unit_tests = b.addRunArtifact(unit_tests);
         const test_step = b.step("test", "Run unit tests");

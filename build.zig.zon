@@ -1,0 +1,17 @@
+.{
+    .name = "radargit",
+    .version = "0.0.0",
+    .dependencies = .{
+        .xitui = .{
+            .url = "git+https://github.com/radarroark/xitui#8eca0e8197784d2b67864586f52560a8e3093c15",
+            .hash = "12201bc75b910f0d77287480c03b72eb546bba1d081209bec547882f75f54d8f4704",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "deps",
+        "src",
+        "LICENSE",
+    },
+}
