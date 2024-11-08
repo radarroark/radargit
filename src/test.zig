@@ -80,7 +80,7 @@ test "end to end" {
         defer c.git_tree_free(tree);
         var commit_oid: c.git_oid = undefined;
         var signature: ?*c.git_signature = null;
-        try std.testing.expectEqual(0, c.git_signature_default(&signature, repo));
+        try std.testing.expectEqual(0, c.git_signature_new(&signature, "radarroark", "radarroark@radar.roark", 0, 0));
         defer c.git_signature_free(signature);
         try std.testing.expectEqual(0, c.git_commit_create(
             &commit_oid,
@@ -140,7 +140,7 @@ test "end to end" {
         defer c.git_tree_free(tree);
         var commit_oid: c.git_oid = undefined;
         var signature: ?*c.git_signature = null;
-        try std.testing.expectEqual(0, c.git_signature_default(&signature, repo));
+        try std.testing.expectEqual(0, c.git_signature_new(&signature, "radarroark", "radarroark@radar.roark", 0, 0));
         defer c.git_signature_free(signature);
         try std.testing.expectEqual(0, c.git_commit_create(
             &commit_oid,
