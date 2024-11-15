@@ -16,6 +16,7 @@ pub fn GitDiff(comptime Widget: type) type {
         box: wgt.Box(Widget),
         allocator: std.mem.Allocator,
         repo: ?*c.git_repository,
+        patches: std.ArrayList(?*c.git_patch),
         bufs: std.ArrayList(c.git_buf),
 
         pub fn init(allocator: std.mem.Allocator, repo: ?*c.git_repository) !GitDiff(Widget) {
@@ -33,6 +34,7 @@ pub fn GitDiff(comptime Widget: type) type {
                 .box = outer_box,
                 .allocator = allocator,
                 .repo = repo,
+                .patches = std.ArrayList(?*c.git_patch).init(allocator),
                 .bufs = std.ArrayList(c.git_buf).init(allocator),
             };
         }
@@ -42,14 +44,34 @@ pub fn GitDiff(comptime Widget: type) type {
                 c.git_buf_dispose(buf);
             }
             self.bufs.deinit();
+
+            for (self.patches.items) |patch| {
+                c.git_patch_free(patch);
+            }
+            self.patches.deinit();
+
             self.box.deinit();
         }
 
         pub fn build(self: *GitDiff(Widget), constraint: layout.Constraint, root_focus: *Focus) !void {
             self.clearGrid();
             self.box.border_style = if (root_focus.grandchild_id == self.getFocus().id) .double else .single;
-            if (self.box.children.count() > 0) {
-                try self.box.build(constraint, root_focus);
+            try self.box.build(constraint, root_focus);
+
+            // add another diff if necessary
+            if (self.box.grid) |outer_box_grid| {
+                const outer_box_height = outer_box_grid.size.height - 2;
+                const scroll_y = self.box.children.values()[0].widget.scroll.y;
+                const u_scroll_y: usize = if (scroll_y >= 0) @intCast(scroll_y) else 0;
+                if (self.box.children.values()[0].widget.scroll.child.box.grid) |inner_box_grid| {
+                    const inner_box_height = inner_box_grid.size.height;
+                    const min_scroll_remaining = 5;
+                    if (inner_box_height -| (outer_box_height + u_scroll_y) <= min_scroll_remaining) {
+                        if (self.bufs.items.len < self.patches.items.len) {
+                            try self.addDiff(self.patches.items[self.bufs.items.len]);
+                        }
+                    }
+                }
             }
         }
 
@@ -148,6 +170,12 @@ pub fn GitDiff(comptime Widget: type) type {
             }
             self.bufs.clearAndFree();
 
+            // clear patches
+            for (self.patches.items) |patch| {
+                c.git_patch_free(patch);
+            }
+            self.patches.clearAndFree();
+
             // remove old diff widgets
             for (self.box.children.values()[0].widget.scroll.child.box.children.values()) |*child| {
                 child.widget.deinit();
@@ -161,36 +189,10 @@ pub fn GitDiff(comptime Widget: type) type {
         }
 
         pub fn addDiff(self: *GitDiff(Widget), patch: ?*c.git_patch) !void {
-            const max_diff_size = 10_000;
-
             // add new buffer
             var buf: c.git_buf = std.mem.zeroes(c.git_buf);
             std.debug.assert(0 == c.git_patch_to_buf(&buf, patch));
             const content = std.mem.sliceTo(buf.ptr, 0);
-
-            var total_len: usize = 0;
-            for (self.bufs.items) |existing_buf| {
-                total_len += std.mem.sliceTo(existing_buf.ptr, 0).len;
-            }
-            total_len += content.len;
-
-            // don't display really large diffs
-            if (total_len > max_diff_size) {
-                c.git_buf_dispose(&buf);
-                var text_box = try wgt.TextBox(Widget).init(self.allocator, "Diff omitted due to length", .hidden);
-                errdefer text_box.deinit();
-                try self.box.children.values()[0].widget.scroll.child.box.children.put(text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });
-                return;
-            }
-
-            // dont' display diffs with invalid unicode
-            if (!std.unicode.utf8ValidateSlice(content)) {
-                c.git_buf_dispose(&buf);
-                var text_box = try wgt.TextBox(Widget).init(self.allocator, "Diff omitted due to invalid unicode", .hidden);
-                errdefer text_box.deinit();
-                try self.box.children.values()[0].widget.scroll.child.box.children.put(text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });
-                return;
-            }
 
             // add to bufs
             {
@@ -198,10 +200,17 @@ pub fn GitDiff(comptime Widget: type) type {
                 try self.bufs.append(buf);
             }
 
-            // add new diff widget
-            var text_box = try wgt.TextBox(Widget).init(self.allocator, content, .hidden);
-            errdefer text_box.deinit();
-            try self.box.children.values()[0].widget.scroll.child.box.children.put(text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });
+            if (!std.unicode.utf8ValidateSlice(content)) {
+                // dont' display diffs with invalid unicode
+                var text_box = try wgt.TextBox(Widget).init(self.allocator, "Diff omitted due to invalid unicode", .hidden);
+                errdefer text_box.deinit();
+                try self.box.children.values()[0].widget.scroll.child.box.children.put(text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });
+            } else {
+                // add new diff widget
+                var text_box = try wgt.TextBox(Widget).init(self.allocator, content, .hidden);
+                errdefer text_box.deinit();
+                try self.box.children.values()[0].widget.scroll.child.box.children.put(text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });
+            }
         }
 
         pub fn getScrollX(self: GitDiff(Widget)) isize {

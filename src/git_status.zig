@@ -530,7 +530,7 @@ pub fn GitStatusContent(comptime Widget: type) type {
 
                 // patch
                 var patch_maybe: ?*c.git_patch = null;
-                defer if (patch_maybe) |patch| c.git_patch_free(patch);
+                errdefer if (patch_maybe) |patch| c.git_patch_free(patch);
                 const delta_count = c.git_diff_num_deltas(status_diff);
                 for (0..delta_count) |delta_index| {
                     const delta = c.git_diff_get_delta(status_diff, delta_index);
@@ -543,7 +543,7 @@ pub fn GitStatusContent(comptime Widget: type) type {
 
                 // update widget
                 if (patch_maybe) |patch| {
-                    try diff.addDiff(patch);
+                    try diff.patches.append(patch);
                 }
             }
         }

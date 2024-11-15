@@ -317,8 +317,8 @@ pub fn GitLog(comptime Widget: type) type {
                 for (0..delta_count) |delta_index| {
                     var patch: ?*c.git_patch = null;
                     std.debug.assert(0 == c.git_patch_from_diff(&patch, commit_diff, delta_index));
-                    defer c.git_patch_free(patch);
-                    try diff.addDiff(patch);
+                    errdefer c.git_patch_free(patch);
+                    try diff.patches.append(patch);
                 }
             }
         }
