@@ -13,56 +13,52 @@ const c = @cImport({
 
 pub fn GitCommitList(comptime Widget: type) type {
     return struct {
+        allocator: std.mem.Allocator,
         scroll: wgt.Scroll(Widget),
         repo: ?*c.git_repository,
+        walker: ?*c.git_revwalk,
         commits: std.ArrayList(?*c.git_commit),
 
         pub fn init(allocator: std.mem.Allocator, repo: ?*c.git_repository) !GitCommitList(Widget) {
-            // init walker
-            var walker: ?*c.git_revwalk = null;
-            std.debug.assert(0 == c.git_revwalk_new(&walker, repo));
-            defer c.git_revwalk_free(walker);
-            std.debug.assert(0 == c.git_revwalk_sorting(walker, c.GIT_SORT_TIME));
-            std.debug.assert(0 == c.git_revwalk_push_head(walker));
+            var self = blk: {
+                // init walker
+                var walker: ?*c.git_revwalk = null;
+                std.debug.assert(0 == c.git_revwalk_new(&walker, repo));
+                errdefer c.git_revwalk_free(walker);
+                std.debug.assert(0 == c.git_revwalk_sorting(walker, c.GIT_SORT_TIME));
+                std.debug.assert(0 == c.git_revwalk_push_head(walker));
 
-            // init commits
-            var commits = std.ArrayList(?*c.git_commit).init(allocator);
-            errdefer commits.deinit();
+                // init commits
+                var commits = std.ArrayList(?*c.git_commit).init(allocator);
+                errdefer commits.deinit();
 
-            // walk the commits
-            var oid: c.git_oid = undefined;
-            while (0 == c.git_revwalk_next(&oid, walker)) {
-                var commit: ?*c.git_commit = null;
-                std.debug.assert(0 == c.git_commit_lookup(&commit, repo, &oid));
-                errdefer c.git_commit_free(commit);
-                try commits.append(commit);
-            }
+                var inner_box = try wgt.Box(Widget).init(allocator, null, .vert);
+                errdefer inner_box.deinit();
 
-            var inner_box = try wgt.Box(Widget).init(allocator, null, .vert);
-            errdefer inner_box.deinit();
-            for (commits.items) |commit| {
-                const line = std.mem.sliceTo(std.mem.sliceTo(c.git_commit_message(commit), 0), '\n');
-                var text_box = try wgt.TextBox(Widget).init(allocator, line, .hidden);
-                errdefer text_box.deinit();
-                text_box.getFocus().focusable = true;
-                try inner_box.children.put(text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });
-            }
+                // init scroll
+                var scroll = try wgt.Scroll(Widget).init(allocator, .{ .box = inner_box }, .vert);
+                errdefer scroll.deinit();
 
-            // init scroll
-            var scroll = try wgt.Scroll(Widget).init(allocator, .{ .box = inner_box }, .vert);
-            errdefer scroll.deinit();
-            if (inner_box.children.count() > 0) {
-                scroll.getFocus().child_id = inner_box.children.keys()[0];
-            }
-
-            return .{
-                .scroll = scroll,
-                .repo = repo,
-                .commits = commits,
+                break :blk GitCommitList(Widget){
+                    .allocator = allocator,
+                    .scroll = scroll,
+                    .repo = repo,
+                    .walker = walker,
+                    .commits = commits,
+                };
             };
+            errdefer self.deinit();
+
+            try self.addCommits(20);
+            if (self.scroll.child.box.children.count() > 0) {
+                self.scroll.getFocus().child_id = self.scroll.child.box.children.keys()[0];
+            }
+
+            return self;
         }
 
         pub fn deinit(self: *GitCommitList(Widget)) void {
+            if (self.walker) |walker| c.git_revwalk_free(walker);
             for (self.commits.items) |commit| {
                 c.git_commit_free(commit);
             }
@@ -80,6 +76,19 @@ pub fn GitCommitList(comptime Widget: type) type {
                     .hidden;
             }
             try self.scroll.build(constraint, root_focus);
+
+            // add more commits if necessary
+            if (self.scroll.grid) |scroll_grid| {
+                const scroll_y = self.scroll.y;
+                const u_scroll_y: usize = if (scroll_y >= 0) @intCast(scroll_y) else 0;
+                if (self.scroll.child.box.grid) |inner_box_grid| {
+                    const inner_box_height = inner_box_grid.size.height;
+                    const min_scroll_remaining = 5;
+                    if (inner_box_height -| (scroll_grid.size.height + u_scroll_y) <= min_scroll_remaining) {
+                        try self.addCommits(20);
+                    }
+                }
+            }
         }
 
         pub fn input(self: *GitCommitList(Widget), key: inp.Key, root_focus: *Focus) !void {
@@ -155,6 +164,39 @@ pub fn GitCommitList(comptime Widget: type) type {
             const left_box = &self.scroll.child.box;
             if (left_box.children.values()[index].rect) |rect| {
                 self.scroll.scrollToRect(rect);
+            }
+        }
+
+        fn addCommits(self: *GitCommitList(Widget), max_commits: usize) !void {
+            if (self.walker) |walker| {
+                var oid: c.git_oid = undefined;
+                var commits_remaining = true;
+
+                for (0..max_commits) |_| {
+                    if (0 == c.git_revwalk_next(&oid, walker)) {
+                        var commit: ?*c.git_commit = null;
+                        std.debug.assert(0 == c.git_commit_lookup(&commit, self.repo, &oid));
+                        {
+                            errdefer c.git_commit_free(commit);
+                            try self.commits.append(commit);
+                        }
+
+                        const inner_box = &self.scroll.child.box;
+                        const line = std.mem.sliceTo(std.mem.sliceTo(c.git_commit_message(commit), 0), '\n');
+                        var text_box = try wgt.TextBox(Widget).init(self.allocator, line, .hidden);
+                        errdefer text_box.deinit();
+                        text_box.getFocus().focusable = true;
+                        try inner_box.children.put(text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });
+                    } else {
+                        commits_remaining = false;
+                        break;
+                    }
+                }
+
+                if (!commits_remaining) {
+                    c.git_revwalk_free(walker);
+                    self.walker = null;
+                }
             }
         }
     };
