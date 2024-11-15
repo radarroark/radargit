@@ -59,14 +59,13 @@ pub fn GitDiff(comptime Widget: type) type {
             try self.box.build(constraint, root_focus);
 
             // add another diff if necessary
-            if (self.box.grid) |outer_box_grid| {
-                const outer_box_height = outer_box_grid.size.height - 2;
+            if (self.box.children.values()[0].widget.scroll.grid) |scroll_grid| {
                 const scroll_y = self.box.children.values()[0].widget.scroll.y;
                 const u_scroll_y: usize = if (scroll_y >= 0) @intCast(scroll_y) else 0;
                 if (self.box.children.values()[0].widget.scroll.child.box.grid) |inner_box_grid| {
                     const inner_box_height = inner_box_grid.size.height;
                     const min_scroll_remaining = 5;
-                    if (inner_box_height -| (outer_box_height + u_scroll_y) <= min_scroll_remaining) {
+                    if (inner_box_height -| (scroll_grid.size.height + u_scroll_y) <= min_scroll_remaining) {
                         if (self.bufs.items.len < self.patches.items.len) {
                             try self.addDiff(self.patches.items[self.bufs.items.len]);
                         }
@@ -84,13 +83,12 @@ pub fn GitDiff(comptime Widget: type) type {
                     }
                 },
                 .arrow_down => {
-                    if (self.box.grid) |outer_box_grid| {
-                        const outer_box_height = outer_box_grid.size.height - 2;
+                    if (self.box.children.values()[0].widget.scroll.grid) |scroll_grid| {
                         const scroll_y = self.box.children.values()[0].widget.scroll.y;
                         const u_scroll_y: usize = if (scroll_y >= 0) @intCast(scroll_y) else 0;
                         if (self.box.children.values()[0].widget.scroll.child.box.grid) |inner_box_grid| {
                             const inner_box_height = inner_box_grid.size.height;
-                            if (outer_box_height + u_scroll_y < inner_box_height) {
+                            if (scroll_grid.size.height + u_scroll_y < inner_box_height) {
                                 self.box.children.values()[0].widget.scroll.y += 1;
                             }
                         }
@@ -102,13 +100,12 @@ pub fn GitDiff(comptime Widget: type) type {
                     }
                 },
                 .arrow_right => {
-                    if (self.box.grid) |outer_box_grid| {
-                        const outer_box_width = outer_box_grid.size.width - 2;
+                    if (self.box.children.values()[0].widget.scroll.grid) |scroll_grid| {
                         const scroll_x = self.box.children.values()[0].widget.scroll.x;
                         const u_scroll_x: usize = if (scroll_x >= 0) @intCast(scroll_x) else 0;
                         if (self.box.children.values()[0].widget.scroll.child.box.grid) |inner_box_grid| {
                             const inner_box_width = inner_box_grid.size.width;
-                            if (outer_box_width + u_scroll_x < inner_box_width) {
+                            if (scroll_grid.size.width + u_scroll_x < inner_box_width) {
                                 self.box.children.values()[0].widget.scroll.x += 1;
                             }
                         }
@@ -118,31 +115,28 @@ pub fn GitDiff(comptime Widget: type) type {
                     self.box.children.values()[0].widget.scroll.y = 0;
                 },
                 .end => {
-                    if (self.box.grid) |outer_box_grid| {
+                    if (self.box.children.values()[0].widget.scroll.grid) |scroll_grid| {
                         if (self.box.children.values()[0].widget.scroll.child.box.grid) |inner_box_grid| {
-                            const outer_box_height = outer_box_grid.size.height - 2;
                             const inner_box_height = inner_box_grid.size.height;
-                            const max_scroll: isize = if (inner_box_height > outer_box_height) @intCast(inner_box_height - outer_box_height) else 0;
+                            const max_scroll: isize = @intCast(inner_box_height -| scroll_grid.size.height);
                             self.box.children.values()[0].widget.scroll.y = max_scroll;
                         }
                     }
                 },
                 .page_up => {
-                    if (self.box.grid) |outer_box_grid| {
-                        const outer_box_height = outer_box_grid.size.height - 2;
+                    if (self.box.children.values()[0].widget.scroll.grid) |scroll_grid| {
                         const scroll_y = self.box.children.values()[0].widget.scroll.y;
-                        const scroll_change: isize = @intCast(outer_box_height / 2);
+                        const scroll_change: isize = @intCast(scroll_grid.size.height / 2);
                         self.box.children.values()[0].widget.scroll.y = @max(0, scroll_y - scroll_change);
                     }
                 },
                 .page_down => {
-                    if (self.box.grid) |outer_box_grid| {
+                    if (self.box.children.values()[0].widget.scroll.grid) |scroll_grid| {
                         if (self.box.children.values()[0].widget.scroll.child.box.grid) |inner_box_grid| {
-                            const outer_box_height = outer_box_grid.size.height - 2;
                             const inner_box_height = inner_box_grid.size.height;
-                            const max_scroll: isize = if (inner_box_height > outer_box_height) @intCast(inner_box_height - outer_box_height) else 0;
+                            const max_scroll: isize = @intCast(inner_box_height - scroll_grid.size.height);
                             const scroll_y = self.box.children.values()[0].widget.scroll.y;
-                            const scroll_change: isize = @intCast(outer_box_height / 2);
+                            const scroll_change: isize = @intCast(scroll_grid.size.height / 2);
                             self.box.children.values()[0].widget.scroll.y = @min(scroll_y + scroll_change, max_scroll);
                         }
                     }
