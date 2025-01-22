@@ -46,7 +46,9 @@ int git_libgit2_init(void)
 		git_sysdir_global_init,
 		git_filter_global_init,
 		git_merge_driver_global_init,
+#ifdef GIT_SSH_LIBSSH2
 		git_transport_ssh_libssh2_global_init,
+#endif
 		git_stream_registry_global_init,
 		git_socket_stream_global_init,
 		git_openssl_stream_global_init,

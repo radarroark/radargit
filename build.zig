@@ -2,7 +2,6 @@ const std = @import("std");
 const libgit2 = @import("deps/libgit2.zig");
 const zlib = @import("deps/zlib.zig");
 const mbedtls = @import("deps/mbedtls.zig");
-const libssh2 = @import("deps/libssh2.zig");
 
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
@@ -10,11 +9,8 @@ pub fn build(b: *std.Build) !void {
 
     const z = zlib.create(b, target, optimize);
     const tls = mbedtls.create(b, target, optimize);
-    const ssh2 = libssh2.create(b, target, optimize);
-    tls.link(ssh2.step);
 
     const git2 = try libgit2.create(b, target, optimize);
-    ssh2.link(git2.step);
     tls.link(git2.step);
     z.link(git2.step);
 

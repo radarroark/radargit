@@ -43,7 +43,7 @@ pub fn create(
         "-DGIT_SHA1_MBEDTLS=1",
         "-DGIT_SHA256_BUILTIN=1",
         "-DGIT_HTTPPARSER_BUILTIN=1",
-        "-DGIT_SSH_LIBSSH2=1",
+        "-DGIT_SSH_EXEC=1",
         "-fno-sanitize=all",
     });
 
@@ -233,7 +233,7 @@ const srcs = &.{
     "libgit2/src/libgit2/transports/ssh_exec.c",
     "libgit2/src/libgit2/transports/smart_pkt.c",
     "libgit2/src/libgit2/transports/ssh.c",
-    "libgit2/src/libgit2/transports/ssh_libssh2.c",
+    //"libgit2/src/libgit2/transports/ssh_libssh2.c",
     "libgit2/src/libgit2/transports/httpparser.c",
     "libgit2/src/libgit2/transports/git.c",
     "libgit2/src/libgit2/attr_file.c",
