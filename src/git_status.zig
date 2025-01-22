@@ -231,7 +231,7 @@ pub fn GitStatusTabs(comptime Widget: type) type {
         box: wgt.Box(Widget),
         arena: std.heap.ArenaAllocator,
 
-        const tab_count = @typeInfo(IndexKind).Enum.fields.len;
+        const tab_count = @typeInfo(IndexKind).@"enum".fields.len;
 
         pub fn init(allocator: std.mem.Allocator, statuses: []Status) !GitStatusTabs(Widget) {
             var box = try wgt.Box(Widget).init(allocator, null, .horiz);
@@ -247,7 +247,7 @@ pub fn GitStatusTabs(comptime Widget: type) type {
 
             var selected_maybe: ?IndexKind = null;
 
-            inline for (@typeInfo(IndexKind).Enum.fields, 0..) |field, i| {
+            inline for (@typeInfo(IndexKind).@"enum".fields, 0..) |field, i| {
                 const index_kind: IndexKind = @enumFromInt(field.value);
                 if (selected_maybe == null and counts[i] > 0) {
                     selected_maybe = index_kind;
@@ -357,7 +357,7 @@ pub fn GitStatusContent(comptime Widget: type) type {
             var box = try wgt.Box(Widget).init(allocator, null, .horiz);
             errdefer box.deinit();
 
-            inline for (@typeInfo(FocusKind).Enum.fields) |focus_kind_field| {
+            inline for (@typeInfo(FocusKind).@"enum".fields) |focus_kind_field| {
                 const focus_kind: FocusKind = @enumFromInt(focus_kind_field.value);
                 switch (focus_kind) {
                     .status_list => {
@@ -606,7 +606,7 @@ pub fn GitStatus(comptime Widget: type) type {
             var box = try wgt.Box(Widget).init(allocator, null, .vert);
             errdefer box.deinit();
 
-            inline for (@typeInfo(FocusKind).Enum.fields) |focus_kind_field| {
+            inline for (@typeInfo(FocusKind).@"enum".fields) |focus_kind_field| {
                 const focus_kind: FocusKind = @enumFromInt(focus_kind_field.value);
                 switch (focus_kind) {
                     .status_tabs => {
@@ -618,7 +618,7 @@ pub fn GitStatus(comptime Widget: type) type {
                         var stack = wgt.Stack(Widget).init(allocator);
                         errdefer stack.deinit();
 
-                        inline for (@typeInfo(IndexKind).Enum.fields) |index_kind_field| {
+                        inline for (@typeInfo(IndexKind).@"enum".fields) |index_kind_field| {
                             const index_kind: IndexKind = @enumFromInt(index_kind_field.value);
                             var status_content = try GitStatusContent(Widget).init(allocator, repo, statuses.items, index_kind);
                             errdefer status_content.deinit();

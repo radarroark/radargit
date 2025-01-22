@@ -72,40 +72,41 @@ pub fn create(
     });
     ret.linkLibC();
 
-    ret.defineCMacro("LIBSSH2_MBEDTLS", null);
+    const mod = ret.root_module;
+    mod.addCMacro("LIBSSH2_MBEDTLS", "");
     if (target.result.os.tag == .windows) {
-        ret.defineCMacro("_CRT_SECURE_NO_DEPRECATE", "1");
-        ret.defineCMacro("HAVE_LIBCRYPT32", null);
-        ret.defineCMacro("HAVE_WINSOCK2_H", null);
-        ret.defineCMacro("HAVE_IOCTLSOCKET", null);
-        ret.defineCMacro("HAVE_SELECT", null);
-        ret.defineCMacro("LIBSSH2_DH_GEX_NEW", "1");
+        mod.addCMacro("_CRT_SECURE_NO_DEPRECATE", "1");
+        mod.addCMacro("HAVE_LIBCRYPT32", "");
+        mod.addCMacro("HAVE_WINSOCK2_H", "");
+        mod.addCMacro("HAVE_IOCTLSOCKET", "");
+        mod.addCMacro("HAVE_SELECT", "");
+        mod.addCMacro("LIBSSH2_DH_GEX_NEW", "1");
 
         if (target.result.abi == .gnu) {
-            ret.defineCMacro("HAVE_UNISTD_H", null);
-            ret.defineCMacro("HAVE_INTTYPES_H", null);
-            ret.defineCMacro("HAVE_SYS_TIME_H", null);
-            ret.defineCMacro("HAVE_GETTIMEOFDAY", null);
+            mod.addCMacro("HAVE_UNISTD_H", "");
+            mod.addCMacro("HAVE_INTTYPES_H", "");
+            mod.addCMacro("HAVE_SYS_TIME_H", "");
+            mod.addCMacro("HAVE_GETTIMEOFDAY", "");
         }
     } else {
-        ret.defineCMacro("HAVE_UNISTD_H", null);
-        ret.defineCMacro("HAVE_INTTYPES_H", null);
-        ret.defineCMacro("HAVE_STDLIB_H", null);
-        ret.defineCMacro("HAVE_SYS_SELECT_H", null);
-        ret.defineCMacro("HAVE_SYS_UIO_H", null);
-        ret.defineCMacro("HAVE_SYS_SOCKET_H", null);
-        ret.defineCMacro("HAVE_SYS_IOCTL_H", null);
-        ret.defineCMacro("HAVE_SYS_TIME_H", null);
-        ret.defineCMacro("HAVE_SYS_UN_H", null);
-        ret.defineCMacro("HAVE_LONGLONG", null);
-        ret.defineCMacro("HAVE_GETTIMEOFDAY", null);
-        ret.defineCMacro("HAVE_INET_ADDR", null);
-        ret.defineCMacro("HAVE_POLL", null);
-        ret.defineCMacro("HAVE_SELECT", null);
-        ret.defineCMacro("HAVE_SOCKET", null);
-        ret.defineCMacro("HAVE_STRTOLL", null);
-        ret.defineCMacro("HAVE_SNPRINTF", null);
-        ret.defineCMacro("HAVE_O_NONBLOCK", null);
+        mod.addCMacro("HAVE_UNISTD_H", "");
+        mod.addCMacro("HAVE_INTTYPES_H", "");
+        mod.addCMacro("HAVE_STDLIB_H", "");
+        mod.addCMacro("HAVE_SYS_SELECT_H", "");
+        mod.addCMacro("HAVE_SYS_UIO_H", "");
+        mod.addCMacro("HAVE_SYS_SOCKET_H", "");
+        mod.addCMacro("HAVE_SYS_IOCTL_H", "");
+        mod.addCMacro("HAVE_SYS_TIME_H", "");
+        mod.addCMacro("HAVE_SYS_UN_H", "");
+        mod.addCMacro("HAVE_LONGLONG", "");
+        mod.addCMacro("HAVE_GETTIMEOFDAY", "");
+        mod.addCMacro("HAVE_INET_ADDR", "");
+        mod.addCMacro("HAVE_POLL", "");
+        mod.addCMacro("HAVE_SELECT", "");
+        mod.addCMacro("HAVE_SOCKET", "");
+        mod.addCMacro("HAVE_STRTOLL", "");
+        mod.addCMacro("HAVE_SNPRINTF", "");
+        mod.addCMacro("HAVE_O_NONBLOCK", "");
     }
 
     return Library{ .step = ret };

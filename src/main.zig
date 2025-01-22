@@ -79,7 +79,7 @@ pub fn main() !void {
     defer _ = c.git_libgit2_shutdown();
 
     // find cwd
-    var cwd_path_buffer = [_]u8{0} ** std.fs.MAX_PATH_BYTES;
+    var cwd_path_buffer = [_]u8{0} ** std.fs.max_path_bytes;
     const cwd_path: [*c]const u8 = @ptrCast(try std.fs.cwd().realpath(".", &cwd_path_buffer));
 
     // init repo

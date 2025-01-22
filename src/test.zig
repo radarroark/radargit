@@ -21,7 +21,7 @@ test "end to end" {
     // we can't just call std.fs.cwd() all the time because we're
     // gonna change it later. and since defers run at the end,
     // if you call std.fs.cwd() in them you're gonna have a bad time.
-    var cwd_path_buffer = [_]u8{0} ** std.fs.MAX_PATH_BYTES;
+    var cwd_path_buffer = [_]u8{0} ** std.fs.max_path_bytes;
     const cwd_path = try std.fs.cwd().realpath(".", &cwd_path_buffer);
     var cwd = try std.fs.openDirAbsolute(cwd_path, .{});
     defer cwd.close();
@@ -40,7 +40,7 @@ test "end to end" {
     defer repo_dir.close();
 
     // get repo path for libgit
-    var repo_path_buffer = [_]u8{0} ** std.fs.MAX_PATH_BYTES;
+    var repo_path_buffer = [_]u8{0} ** std.fs.max_path_bytes;
     const repo_path: [*c]const u8 = @ptrCast(try repo_dir.realpath(".", &repo_path_buffer));
 
     // init repo
@@ -130,7 +130,7 @@ test "end to end" {
         var parent_commit: ?*c.git_commit = null;
         try std.testing.expectEqual(0, c.git_commit_lookup(&parent_commit, repo, c.git_object_id(parent_object)));
         defer c.git_commit_free(parent_commit);
-        var parents = [_]?*c.git_commit{parent_commit};
+        var parents = [_]?*const c.git_commit{parent_commit};
 
         // make the commit
         var tree_oid: c.git_oid = undefined;
