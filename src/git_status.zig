@@ -295,7 +295,7 @@ pub fn GitStatusTabs(comptime Widget: type) type {
                     const index = blk: {
                         switch (key) {
                             .arrow_left => {
-                                break :blk current_index - 1;
+                                break :blk current_index -| 1;
                             },
                             .arrow_right => {
                                 if (current_index + 1 < children.count()) {
