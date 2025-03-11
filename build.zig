@@ -24,10 +24,8 @@ pub fn build(b: *std.Build) !void {
         exe.linkLibC();
         exe.addIncludePath(b.path("deps/libgit2/include"));
         exe.linkLibrary(git2.step);
-        //exe.root_module.addAnonymousImport("xitui", .{
-        //    .root_source_file = b.path("../xitui/src/lib.zig"),
-        //});
         exe.root_module.addImport("xitui", b.dependency("xitui", .{}).module("xitui"));
+        //exe.root_module.addAnonymousImport("xitui", .{ .root_source_file = b.path("../xitui/src/lib.zig") });
         b.installArtifact(exe);
 
         const run_cmd = b.addRunArtifact(exe);
