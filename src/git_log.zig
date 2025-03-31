@@ -183,7 +183,7 @@ pub fn GitCommitList(comptime Widget: type) type {
 
                         const inner_box = &self.scroll.child.box;
                         const line = std.mem.sliceTo(std.mem.sliceTo(c.git_commit_message(commit), 0), '\n');
-                        var text_box = try wgt.TextBox(Widget).init(self.allocator, line, .hidden);
+                        var text_box = try wgt.TextBox(Widget).init(self.allocator, line, .hidden, .none);
                         errdefer text_box.deinit();
                         text_box.getFocus().focusable = true;
                         try inner_box.children.put(text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });

@@ -28,7 +28,7 @@ pub fn GitUITabs(comptime Widget: type) type {
                     .log => "log",
                     .status => "status",
                 };
-                var text_box = try wgt.TextBox(Widget).init(allocator, name, .single);
+                var text_box = try wgt.TextBox(Widget).init(allocator, name, .single, .none);
                 errdefer text_box.deinit();
                 text_box.getFocus().focusable = true;
                 try box.children.put(text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });
