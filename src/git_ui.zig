@@ -8,9 +8,7 @@ const Focus = xitui.focus.Focus;
 const g_stat = @import("./git_status.zig");
 const g_log = @import("./git_log.zig");
 
-const c = @cImport({
-    @cInclude("git2.h");
-});
+const c = @import("./main.zig").c;
 
 pub fn GitUITabs(comptime Widget: type) type {
     return struct {

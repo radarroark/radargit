@@ -15,7 +15,7 @@ const g_log = @import("./git_log.zig");
 const g_stat = @import("./git_status.zig");
 const g_ui = @import("./git_ui.zig");
 
-const c = @cImport({
+pub const c = @cImport({
     @cInclude("git2.h");
 });
 
@@ -131,6 +131,6 @@ pub fn main() !void {
         }, root.getFocus());
 
         // TODO: do variable sleep with target frame rate
-        std.time.sleep(5000000);
+        std.Thread.sleep(5000000);
     }
 }

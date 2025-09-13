@@ -7,9 +7,7 @@ const inp = xitui.input;
 const Grid = xitui.grid.Grid;
 const Focus = xitui.focus.Focus;
 
-const c = @cImport({
-    @cInclude("git2.h");
-});
+const c = @import("./main.zig").c;
 
 pub fn GitDiff(comptime Widget: type) type {
     return struct {
@@ -34,8 +32,8 @@ pub fn GitDiff(comptime Widget: type) type {
                 .box = outer_box,
                 .allocator = allocator,
                 .repo = repo,
-                .patches = std.ArrayList(?*c.git_patch).init(allocator),
-                .bufs = std.ArrayList(c.git_buf).init(allocator),
+                .patches = std.ArrayList(?*c.git_patch){},
+                .bufs = std.ArrayList(c.git_buf){},
             };
         }
 
@@ -43,12 +41,12 @@ pub fn GitDiff(comptime Widget: type) type {
             for (self.bufs.items) |*buf| {
                 c.git_buf_dispose(buf);
             }
-            self.bufs.deinit();
+            self.bufs.deinit(self.allocator);
 
             for (self.patches.items) |patch| {
                 c.git_patch_free(patch);
             }
-            self.patches.deinit();
+            self.patches.deinit(self.allocator);
 
             self.box.deinit();
         }
@@ -162,13 +160,13 @@ pub fn GitDiff(comptime Widget: type) type {
             for (self.bufs.items) |*buf| {
                 c.git_buf_dispose(buf);
             }
-            self.bufs.clearAndFree();
+            self.bufs.clearAndFree(self.allocator);
 
             // clear patches
             for (self.patches.items) |patch| {
                 c.git_patch_free(patch);
             }
-            self.patches.clearAndFree();
+            self.patches.clearAndFree(self.allocator);
 
             // remove old diff widgets
             for (self.box.children.values()[0].widget.scroll.child.box.children.values()) |*child| {
@@ -191,7 +189,7 @@ pub fn GitDiff(comptime Widget: type) type {
             // add to bufs
             {
                 errdefer c.git_buf_dispose(&buf);
-                try self.bufs.append(buf);
+                try self.bufs.append(self.allocator, buf);
             }
 
             if (!std.unicode.utf8ValidateSlice(content)) {

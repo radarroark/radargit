@@ -7,9 +7,7 @@ const Grid = xitui.grid.Grid;
 const Focus = xitui.focus.Focus;
 const g_diff = @import("./git_diff.zig");
 
-const c = @cImport({
-    @cInclude("git2.h");
-});
+const c = @import("./main.zig").c;
 
 pub fn GitCommitList(comptime Widget: type) type {
     return struct {
@@ -29,8 +27,8 @@ pub fn GitCommitList(comptime Widget: type) type {
                 std.debug.assert(0 == c.git_revwalk_push_head(walker));
 
                 // init commits
-                var commits = std.ArrayList(?*c.git_commit).init(allocator);
-                errdefer commits.deinit();
+                var commits = std.ArrayList(?*c.git_commit){};
+                errdefer commits.deinit(allocator);
 
                 var inner_box = try wgt.Box(Widget).init(allocator, null, .vert);
                 errdefer inner_box.deinit();
@@ -62,7 +60,7 @@ pub fn GitCommitList(comptime Widget: type) type {
             for (self.commits.items) |commit| {
                 c.git_commit_free(commit);
             }
-            self.commits.deinit();
+            self.commits.deinit(self.allocator);
             self.scroll.deinit();
         }
 
@@ -178,7 +176,7 @@ pub fn GitCommitList(comptime Widget: type) type {
                         std.debug.assert(0 == c.git_commit_lookup(&commit, self.repo, &oid));
                         {
                             errdefer c.git_commit_free(commit);
-                            try self.commits.append(commit);
+                            try self.commits.append(self.allocator, commit);
                         }
 
                         const inner_box = &self.scroll.child.box;
@@ -204,6 +202,7 @@ pub fn GitCommitList(comptime Widget: type) type {
 
 pub fn GitLog(comptime Widget: type) type {
     return struct {
+        allocator: std.mem.Allocator,
         box: wgt.Box(Widget),
         repo: ?*c.git_repository,
 
@@ -227,6 +226,7 @@ pub fn GitLog(comptime Widget: type) type {
             }
 
             var git_log = GitLog(Widget){
+                .allocator = allocator,
                 .box = box,
                 .repo = repo,
             };
@@ -360,7 +360,7 @@ pub fn GitLog(comptime Widget: type) type {
                     var patch: ?*c.git_patch = null;
                     std.debug.assert(0 == c.git_patch_from_diff(&patch, commit_diff, delta_index));
                     errdefer c.git_patch_free(patch);
-                    try diff.patches.append(patch);
+                    try diff.patches.append(self.allocator, patch);
                 }
             }
         }

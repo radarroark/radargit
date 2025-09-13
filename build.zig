@@ -17,9 +17,11 @@ pub fn build(b: *std.Build) !void {
     {
         const exe = b.addExecutable(.{
             .name = "radargit",
-            .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/main.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
         });
         exe.linkLibC();
         exe.addIncludePath(b.path("deps/libgit2/include"));
@@ -39,17 +41,17 @@ pub fn build(b: *std.Build) !void {
 
     {
         const unit_tests = b.addTest(.{
-            .root_source_file = b.path("src/test.zig"),
-            .target = target,
-            .optimize = optimize,
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/test.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
         });
         unit_tests.linkLibC();
         unit_tests.addIncludePath(b.path("deps/libgit2/include"));
         unit_tests.linkLibrary(git2.step);
-        //unit_tests.root_module.addAnonymousImport("xitui", .{
-        //    .root_source_file = b.path("../xitui/src/lib.zig"),
-        //});
         unit_tests.root_module.addImport("xitui", b.dependency("xitui", .{}).module("xitui"));
+        //unit_tests.root_module.addAnonymousImport("xitui", .{ .root_source_file = b.path("../xitui/src/lib.zig") });
 
         const run_unit_tests = b.addRunArtifact(unit_tests);
         const test_step = b.step("test", "Run unit tests");

@@ -2,16 +2,12 @@ const std = @import("std");
 const main = @import("./main.zig");
 const g_ui = @import("./git_ui.zig");
 
-const c = @cImport({
-    @cInclude("git2.h");
-});
+const c = main.c;
 
 test "end to end" {
     const temp_dir_name = "temp-test-end-to-end";
 
     const allocator = std.testing.allocator;
-    var args = std.ArrayList([]const u8).init(allocator);
-    defer args.deinit();
 
     // start libgit
     _ = c.git_libgit2_init();
@@ -166,12 +162,12 @@ test "end to end" {
         try std.testing.expectEqual(0, c.git_revwalk_push_head(walker));
 
         // init commits list
-        var commits = std.ArrayList(?*c.git_commit).init(allocator);
+        var commits = std.ArrayList(?*c.git_commit){};
         defer {
             for (commits.items) |commit| {
                 c.git_commit_free(commit);
             }
-            commits.deinit();
+            commits.deinit(allocator);
         }
 
         // walk the commits
@@ -181,7 +177,7 @@ test "end to end" {
             try std.testing.expectEqual(0, c.git_commit_lookup(&commit, repo, &oid));
             {
                 errdefer c.git_commit_free(commit);
-                try commits.append(commit);
+                try commits.append(allocator, commit);
             }
         }
 

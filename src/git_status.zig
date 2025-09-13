@@ -8,9 +8,7 @@ const Focus = xitui.focus.Focus;
 const g_diff = @import("./git_diff.zig");
 const g_ui = @import("./git_ui.zig");
 
-const c = @cImport({
-    @cInclude("git2.h");
-});
+const c = @import("./main.zig").c;
 
 pub const IndexKind = enum {
     added,
@@ -339,6 +337,7 @@ pub fn GitStatusTabs(comptime Widget: type) type {
 
 pub fn GitStatusContent(comptime Widget: type) type {
     return struct {
+        allocator: std.mem.Allocator,
         box: wgt.Box(Widget),
         filtered_statuses: std.ArrayList(Status),
         repo: ?*c.git_repository,
@@ -346,11 +345,11 @@ pub fn GitStatusContent(comptime Widget: type) type {
         const FocusKind = enum { status_list, diff };
 
         pub fn init(allocator: std.mem.Allocator, repo: ?*c.git_repository, statuses: []Status, selected: IndexKind) !GitStatusContent(Widget) {
-            var filtered_statuses = std.ArrayList(Status).init(allocator);
-            errdefer filtered_statuses.deinit();
+            var filtered_statuses = std.ArrayList(Status){};
+            errdefer filtered_statuses.deinit(allocator);
             for (statuses) |status| {
                 if (status.kind == selected) {
-                    try filtered_statuses.append(status);
+                    try filtered_statuses.append(allocator, status);
                 }
             }
 
@@ -375,6 +374,7 @@ pub fn GitStatusContent(comptime Widget: type) type {
             }
 
             var status_content = GitStatusContent(Widget){
+                .allocator = allocator,
                 .box = box,
                 .filtered_statuses = filtered_statuses,
                 .repo = repo,
@@ -386,7 +386,7 @@ pub fn GitStatusContent(comptime Widget: type) type {
 
         pub fn deinit(self: *GitStatusContent(Widget)) void {
             self.box.deinit();
-            self.filtered_statuses.deinit();
+            self.filtered_statuses.deinit(self.allocator);
         }
 
         pub fn build(self: *GitStatusContent(Widget), constraint: layout.Constraint, root_focus: *Focus) !void {
@@ -543,7 +543,7 @@ pub fn GitStatusContent(comptime Widget: type) type {
 
                 // update widget
                 if (patch_maybe) |patch| {
-                    try diff.patches.append(patch);
+                    try diff.patches.append(self.allocator, patch);
                 }
             }
         }
@@ -552,6 +552,7 @@ pub fn GitStatusContent(comptime Widget: type) type {
 
 pub fn GitStatus(comptime Widget: type) type {
     return struct {
+        allocator: std.mem.Allocator,
         box: wgt.Box(Widget),
         status_list: *c.git_status_list,
         statuses: std.ArrayList(Status),
@@ -570,35 +571,35 @@ pub fn GitStatus(comptime Widget: type) type {
             const entry_count = c.git_status_list_entrycount(status_list);
 
             // loop over results
-            var statuses = std.ArrayList(Status).init(allocator);
-            errdefer statuses.deinit();
+            var statuses = std.ArrayList(Status){};
+            errdefer statuses.deinit(allocator);
             for (0..entry_count) |i| {
                 const entry = c.git_status_byindex(status_list, i);
                 try std.testing.expect(null != entry);
                 const status_kind: c_int = @intCast(entry.*.status);
                 if (c.GIT_STATUS_INDEX_NEW & status_kind != 0) {
                     const old_path = entry.*.head_to_index.*.old_file.path;
-                    try statuses.append(.{ .kind = .{ .added = .created }, .path = std.mem.sliceTo(old_path, 0) });
+                    try statuses.append(allocator, .{ .kind = .{ .added = .created }, .path = std.mem.sliceTo(old_path, 0) });
                 }
                 if (c.GIT_STATUS_INDEX_MODIFIED & status_kind != 0) {
                     const old_path = entry.*.head_to_index.*.old_file.path;
-                    try statuses.append(.{ .kind = .{ .added = .modified }, .path = std.mem.sliceTo(old_path, 0) });
+                    try statuses.append(allocator, .{ .kind = .{ .added = .modified }, .path = std.mem.sliceTo(old_path, 0) });
                 }
                 if (c.GIT_STATUS_INDEX_DELETED & status_kind != 0) {
                     const old_path = entry.*.head_to_index.*.old_file.path;
-                    try statuses.append(.{ .kind = .{ .added = .deleted }, .path = std.mem.sliceTo(old_path, 0) });
+                    try statuses.append(allocator, .{ .kind = .{ .added = .deleted }, .path = std.mem.sliceTo(old_path, 0) });
                 }
                 if (c.GIT_STATUS_WT_NEW & status_kind != 0) {
                     const old_path = entry.*.index_to_workdir.*.old_file.path;
-                    try statuses.append(.{ .kind = .not_tracked, .path = std.mem.sliceTo(old_path, 0) });
+                    try statuses.append(allocator, .{ .kind = .not_tracked, .path = std.mem.sliceTo(old_path, 0) });
                 }
                 if (c.GIT_STATUS_WT_MODIFIED & status_kind != 0) {
                     const old_path = entry.*.index_to_workdir.*.old_file.path;
-                    try statuses.append(.{ .kind = .{ .not_added = .modified }, .path = std.mem.sliceTo(old_path, 0) });
+                    try statuses.append(allocator, .{ .kind = .{ .not_added = .modified }, .path = std.mem.sliceTo(old_path, 0) });
                 }
                 if (c.GIT_STATUS_WT_DELETED & status_kind != 0) {
                     const old_path = entry.*.index_to_workdir.*.old_file.path;
-                    try statuses.append(.{ .kind = .{ .not_added = .deleted }, .path = std.mem.sliceTo(old_path, 0) });
+                    try statuses.append(allocator, .{ .kind = .{ .not_added = .deleted }, .path = std.mem.sliceTo(old_path, 0) });
                 }
             }
 
@@ -631,6 +632,7 @@ pub fn GitStatus(comptime Widget: type) type {
             }
 
             var git_status = GitStatus(Widget){
+                .allocator = allocator,
                 .box = box,
                 .statuses = statuses,
                 .status_list = status_list.?,
@@ -641,7 +643,7 @@ pub fn GitStatus(comptime Widget: type) type {
 
         pub fn deinit(self: *GitStatus(Widget)) void {
             self.box.deinit();
-            self.statuses.deinit();
+            self.statuses.deinit(self.allocator);
             c.git_status_list_free(self.status_list);
         }
 
