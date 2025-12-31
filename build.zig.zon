@@ -3,9 +3,8 @@
     .version = "0.0.0",
     .dependencies = .{
         .xitui = .{
-            .url = "git+https://github.com/radarroark/xitui#3fb562d72a766eb1c34fb47f8279de663b86c184",
-            .hash = "xitui-0.0.0--YPVyMowAQAiI90haduBXe0oHanynZ6FvVlGxjEdVfL7",
-            //.path = "../xitui",
+            .url = "git+https://github.com/radarroark/xitui#a1da04a36e7d00da8198ae92ec1022ec0e9c8eb4",
+            .hash = "xitui-0.0.0--YPVyCUxAQA7P8PYszwXkRZ_wuhKu2PUwm7-4oNyDlv0",
         },
     },
     .paths = .{

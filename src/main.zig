@@ -78,19 +78,26 @@ pub fn main() !void {
     _ = c.git_libgit2_init();
     defer _ = c.git_libgit2_shutdown();
 
-    // find cwd
-    var cwd_path_buffer = [_]u8{0} ** std.fs.max_path_bytes;
-    const cwd_path: [*c]const u8 = @ptrCast(try std.fs.cwd().realpath(".", &cwd_path_buffer));
-
-    // init repo
-    var repo: ?*c.git_repository = null;
-    std.debug.assert(0 == c.git_repository_init(&repo, cwd_path, 0));
-    defer c.git_repository_free(repo);
-
-    // init root widget
+    // init allocator
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
+
+    // init io
+    var threaded: std.Io.Threaded = .init_single_threaded;
+    defer threaded.deinit();
+    const io = threaded.io();
+
+    // find cwd
+    const cwd_path = try std.process.getCwdAlloc(allocator);
+    defer allocator.free(cwd_path);
+
+    // init repo
+    var repo: ?*c.git_repository = null;
+    std.debug.assert(0 == c.git_repository_init(&repo, cwd_path.ptr, 0));
+    defer c.git_repository_free(repo);
+
+    // init root widget
     var root = Widget{ .git_ui = try g_ui.GitUI(Widget).init(allocator, repo) };
     defer root.deinit();
 
@@ -104,8 +111,8 @@ pub fn main() !void {
     }
 
     // init term
-    var terminal = try term.Terminal.init(allocator);
-    defer terminal.deinit();
+    var terminal = try term.Terminal.init(io, allocator);
+    defer terminal.deinit(io);
 
     var last_size = layout.Size{ .width = 0, .height = 0 };
     var last_grid = try Grid.init(allocator, last_size);
@@ -116,7 +123,7 @@ pub fn main() !void {
         try terminal.render(&root, &last_grid, &last_size);
 
         // process any inputs
-        while (try terminal.readKey()) |key| {
+        while (try terminal.readKey(io)) |key| {
             switch (key) {
                 .codepoint => |cp| if (cp == 'q') return,
                 else => {},
@@ -131,6 +138,6 @@ pub fn main() !void {
         }, root.getFocus());
 
         // TODO: do variable sleep with target frame rate
-        std.Thread.sleep(5000000);
+        try std.Io.sleep(io, .fromMilliseconds(5), .real);
     }
 }
