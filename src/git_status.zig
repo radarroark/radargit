@@ -193,16 +193,12 @@ pub fn GitStatusList(comptime Widget: type) type {
 pub fn GitStatusTabs(comptime Widget: type) type {
     return struct {
         box: wgt.Box(Widget),
-        arena: std.heap.ArenaAllocator,
 
         const tab_count = @typeInfo(IndexKind).@"enum".fields.len;
 
         pub fn init(allocator: std.mem.Allocator, statuses: []Status) !GitStatusTabs(Widget) {
             var box = try wgt.Box(Widget).init(allocator, .{ .border_style = null, .direction = .horiz });
             errdefer box.deinit(allocator);
-
-            var arena = std.heap.ArenaAllocator.init(allocator);
-            errdefer arena.deinit();
 
             var counts: [tab_count]usize = [_]usize{0} ** tab_count;
             for (statuses) |status| {
@@ -221,24 +217,21 @@ pub fn GitStatusTabs(comptime Widget: type) type {
                     .not_added => "not added",
                     .not_tracked => "not tracked",
                 };
-                const label = try std.fmt.allocPrint(arena.allocator(), "{s} ({})", .{ name, counts[i] });
+                var label_buf: [64]u8 = undefined;
+                const label = try std.fmt.bufPrint(&label_buf, "{s} ({})", .{ name, counts[i] });
                 var text_box = try wgt.TextBox(Widget).init(allocator, label, .{ .border_style = .single, .wrap_kind = .none });
                 errdefer text_box.deinit(allocator);
                 text_box.getFocus().focusable = true;
                 try box.children.put(allocator, text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });
             }
 
-            var git_status_tabs = GitStatusTabs(Widget){
-                .box = box,
-                .arena = arena,
-            };
+            var git_status_tabs = GitStatusTabs(Widget){ .box = box };
             git_status_tabs.getFocus().child_id = box.children.keys()[@intFromEnum(selected_maybe orelse .added)];
             return git_status_tabs;
         }
 
         pub fn deinit(self: *GitStatusTabs(Widget), allocator: std.mem.Allocator) void {
             self.box.deinit(allocator);
-            self.arena.deinit();
         }
 
         pub fn build(self: *GitStatusTabs(Widget), allocator: std.mem.Allocator, constraint: layout.Constraint, root_focus: *Focus) !void {

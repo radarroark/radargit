@@ -12,7 +12,7 @@ pub fn GitDiff(comptime Widget: type) type {
     return struct {
         box: wgt.Box(Widget),
         patches: std.ArrayList(?*c.git_patch),
-        bufs: std.ArrayList(c.git_buf),
+        diff_count: usize,
 
         pub fn init(allocator: std.mem.Allocator) !GitDiff(Widget) {
             var inner_box = try wgt.Box(Widget).init(allocator, .{ .border_style = null, .direction = .vert });
@@ -28,16 +28,11 @@ pub fn GitDiff(comptime Widget: type) type {
             return .{
                 .box = outer_box,
                 .patches = .empty,
-                .bufs = .empty,
+                .diff_count = 0,
             };
         }
 
         pub fn deinit(self: *GitDiff(Widget), allocator: std.mem.Allocator) void {
-            for (self.bufs.items) |*buf| {
-                c.git_buf_dispose(buf);
-            }
-            self.bufs.deinit(allocator);
-
             for (self.patches.items) |patch| {
                 c.git_patch_free(patch);
             }
@@ -59,8 +54,8 @@ pub fn GitDiff(comptime Widget: type) type {
                     const inner_box_height = inner_box_grid.size.height;
                     const min_scroll_remaining = 5;
                     if (inner_box_height -| (scroll_grid.size.height + u_scroll_y) <= min_scroll_remaining) {
-                        if (self.bufs.items.len < self.patches.items.len) {
-                            try self.addDiff(allocator, self.patches.items[self.bufs.items.len]);
+                        if (self.diff_count < self.patches.items.len) {
+                            try self.addDiff(allocator, self.patches.items[self.diff_count]);
                         }
                     }
                 }
@@ -174,12 +169,6 @@ pub fn GitDiff(comptime Widget: type) type {
         }
 
         pub fn clearDiffs(self: *GitDiff(Widget), allocator: std.mem.Allocator) !void {
-            // clear buffers
-            for (self.bufs.items) |*buf| {
-                c.git_buf_dispose(buf);
-            }
-            self.bufs.clearAndFree(allocator);
-
             // clear patches
             for (self.patches.items) |patch| {
                 c.git_patch_free(patch);
@@ -196,19 +185,15 @@ pub fn GitDiff(comptime Widget: type) type {
             const widget = &self.box.children.values()[0].widget;
             widget.scroll.x = 0;
             widget.scroll.y = 0;
+            self.diff_count = 0;
         }
 
         pub fn addDiff(self: *GitDiff(Widget), allocator: std.mem.Allocator, patch: ?*c.git_patch) !void {
             // add new buffer
             var buf: c.git_buf = std.mem.zeroes(c.git_buf);
             std.debug.assert(0 == c.git_patch_to_buf(&buf, patch));
+            defer c.git_buf_dispose(&buf);
             const content = std.mem.sliceTo(buf.ptr, 0);
-
-            // add to bufs
-            {
-                errdefer c.git_buf_dispose(&buf);
-                try self.bufs.append(allocator, buf);
-            }
 
             if (!std.unicode.utf8ValidateSlice(content)) {
                 // dont' display diffs with invalid unicode
@@ -221,6 +206,7 @@ pub fn GitDiff(comptime Widget: type) type {
                 errdefer text_box.deinit(allocator);
                 try self.box.children.values()[0].widget.scroll.child.box.children.put(allocator, text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });
             }
+            self.diff_count += 1;
         }
 
         pub fn getScrollX(self: GitDiff(Widget)) isize {
@@ -232,7 +218,7 @@ pub fn GitDiff(comptime Widget: type) type {
         }
 
         pub fn isEmpty(self: GitDiff(Widget)) bool {
-            return self.box.children.count() == 0;
+            return self.diff_count == 0;
         }
     };
 }
