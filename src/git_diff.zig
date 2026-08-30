@@ -197,12 +197,12 @@ pub fn GitDiff(comptime Widget: type) type {
 
             if (!std.unicode.utf8ValidateSlice(content)) {
                 // dont' display diffs with invalid unicode
-                var text_box = try wgt.TextBox(Widget).init(allocator, "Diff omitted due to invalid unicode", .{ .border_style = .hidden, .wrap_kind = .none });
+                var text_box = try wgt.TextBox.init(allocator, "Diff omitted due to invalid unicode", .{ .border_style = .hidden, .wrap_kind = .none });
                 errdefer text_box.deinit(allocator);
                 try self.box.children.values()[0].widget.scroll.child.box.children.put(allocator, text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });
             } else {
                 // add new diff widget
-                var text_box = try wgt.TextBox(Widget).init(allocator, content, .{ .border_style = .hidden, .wrap_kind = .none });
+                var text_box = try wgt.TextBox.init(allocator, content, .{ .border_style = .hidden, .wrap_kind = .none });
                 errdefer text_box.deinit(allocator);
                 try self.box.children.values()[0].widget.scroll.child.box.children.put(allocator, text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });
             }
