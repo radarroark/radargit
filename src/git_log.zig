@@ -157,7 +157,7 @@ pub fn GitCommitList(comptime Widget: type) type {
                         const line = std.mem.sliceTo(std.mem.sliceTo(c.git_commit_message(commit), 0), '\n');
                         var text_box = try wgt.TextBox.init(allocator, line, .{ .border_style = .hidden, .wrap_kind = .word });
                         errdefer text_box.deinit(allocator);
-                        text_box.getFocus().focusable = true;
+                        text_box.getFocus().mode = .all;
                         try inner_box.children.put(allocator, text_box.getFocus().id, .{
                             .widget = .{ .text_box = text_box },
                             .rect = null,
@@ -204,7 +204,7 @@ pub fn GitLog(comptime Widget: type) type {
             {
                 var diff = try g_diff.GitDiff(Widget).init(allocator);
                 errdefer diff.deinit(allocator);
-                diff.getFocus().focusable = true;
+                diff.getFocus().mode = .all;
                 try box.children.put(allocator, diff.getFocus().id, .{ .widget = .{ .git_diff = diff }, .rect = null, .min_size = .{ .width = diff_min_width, .height = null } });
             }
 

@@ -372,7 +372,7 @@ test "end to end" {
     var leaf_id = root.getFocus().id;
     var iter = root.getFocus().children.iterator();
     while (iter.next()) |child| {
-        if (child.key_ptr.* > leaf_id and child.value_ptr.focus.focusable) {
+        if (child.key_ptr.* > leaf_id and child.value_ptr.focus.mode == .all) {
             leaf_id = child.key_ptr.*;
         }
     }

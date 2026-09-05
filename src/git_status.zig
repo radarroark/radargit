@@ -112,7 +112,7 @@ pub fn GitStatusList(comptime Widget: type) type {
             for (statuses) |item| {
                 var list_item = try GitStatusListItem(Widget).init(allocator, item);
                 errdefer list_item.deinit(allocator);
-                list_item.getFocus().focusable = true;
+                list_item.getFocus().mode = .all;
                 try inner_box.children.put(allocator, list_item.getFocus().id, .{ .widget = .{ .git_status_list_item = list_item }, .rect = null, .min_size = null });
             }
 
@@ -221,7 +221,7 @@ pub fn GitStatusTabs(comptime Widget: type) type {
                 const label = try std.fmt.bufPrint(&label_buf, "{s} ({})", .{ name, counts[i] });
                 var text_box = try wgt.TextBox.init(allocator, label, .{ .border_style = .single, .wrap_kind = .none });
                 errdefer text_box.deinit(allocator);
-                text_box.getFocus().focusable = true;
+                text_box.getFocus().mode = .all;
                 try box.children.put(allocator, text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });
             }
 
@@ -323,7 +323,7 @@ pub fn GitStatusContent(comptime Widget: type) type {
                     .diff => {
                         var diff = try g_diff.GitDiff(Widget).init(allocator);
                         errdefer diff.deinit(allocator);
-                        diff.getFocus().focusable = true;
+                        diff.getFocus().mode = .all;
                         try box.children.put(allocator, diff.getFocus().id, .{ .widget = .{ .git_diff = diff }, .rect = null, .min_size = .{ .width = 60, .height = null } });
                     },
                 }

@@ -180,18 +180,7 @@ pub fn main() !void {
                 .mouse => |mouse| {
                     if (mouse.action == .press and mouse.action.press == .left) {
                         const root_focus = root.getFocus();
-                        var iter = root_focus.children.iterator();
-                        while (iter.next()) |entry| {
-                            const child = entry.value_ptr.*;
-                            if (!child.focus.focusable) continue;
-                            const r = child.rect;
-                            if (mouse.x >= r.x and mouse.y >= r.y and
-                                mouse.x < r.x + r.size.width and mouse.y < r.y + r.size.height)
-                            {
-                                root_focus.setFocus(entry.key_ptr.*);
-                                break;
-                            }
-                        }
+                        if (root_focus.hitTest(mouse.x, mouse.y)) |hit| root_focus.setFocus(hit.id);
                     } else {
                         try root.input(allocator, key, root.getFocus());
                     }
