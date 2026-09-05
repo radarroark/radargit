@@ -448,22 +448,17 @@ pub fn GitStatusContent(comptime Widget: type) type {
                 var status_diff: ?*c.git_diff = null;
                 switch (status.kind) {
                     .added => {
-                        // head oid
-                        var head_object: ?*c.git_object = null;
-                        std.debug.assert(0 == c.git_revparse_single(&head_object, self.repo, "HEAD"));
-                        defer c.git_object_free(head_object);
-                        const head_oid = c.git_object_id(head_object);
-
-                        // commit
-                        var commit: ?*c.git_commit = null;
-                        std.debug.assert(0 == c.git_commit_lookup(&commit, self.repo, head_oid));
-                        defer c.git_commit_free(commit);
-
-                        // commit tree
-                        const commit_oid = c.git_commit_tree_id(commit);
-                        var commit_tree: ?*c.git_tree = null;
-                        std.debug.assert(0 == c.git_tree_lookup(&commit_tree, self.repo, commit_oid));
-                        defer c.git_tree_free(commit_tree);
+                        // before the first commit, compare the index to an empty tree
+                        var head_tree: ?*c.git_object = null;
+                        defer c.git_object_free(head_tree);
+                        switch (c.git_repository_head_unborn(self.repo)) {
+                            0 => {
+                                if (c.git_revparse_single(&head_tree, self.repo, "HEAD^{tree}") != 0) return error.FailedToReadHeadTree;
+                            },
+                            1 => {},
+                            else => return error.FailedToReadHead,
+                        }
+                        const commit_tree: ?*c.git_tree = @ptrCast(head_tree);
 
                         std.debug.assert(0 == c.git_diff_tree_to_index(&status_diff, self.repo, commit_tree, index, &options));
                     },

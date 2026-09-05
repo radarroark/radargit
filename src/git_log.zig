@@ -21,10 +21,17 @@ pub fn GitCommitList(comptime Widget: type) type {
             var self = blk: {
                 // init walker
                 var walker: ?*c.git_revwalk = null;
-                std.debug.assert(0 == c.git_revwalk_new(&walker, repo));
-                errdefer c.git_revwalk_free(walker);
-                std.debug.assert(0 == c.git_revwalk_sorting(walker, c.GIT_SORT_TIME));
-                std.debug.assert(0 == c.git_revwalk_push_head(walker));
+                errdefer if (walker) |ptr| c.git_revwalk_free(ptr);
+                // an unborn branch has no commits to walk
+                switch (c.git_repository_head_unborn(repo)) {
+                    0 => {
+                        if (c.git_revwalk_new(&walker, repo) != 0) return error.FailedToCreateRevwalk;
+                        if (c.git_revwalk_sorting(walker, c.GIT_SORT_TIME) != 0) return error.FailedToSortRevwalk;
+                        if (c.git_revwalk_push_head(walker) != 0) return error.FailedToReadHead;
+                    },
+                    1 => {},
+                    else => return error.FailedToReadHead,
+                }
 
                 // init commits
                 var commits: std.ArrayList(?*c.git_commit) = .empty;
