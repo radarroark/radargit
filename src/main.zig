@@ -78,6 +78,14 @@ pub const Widget = union(enum) {
     }
 };
 
+fn openRepo(path: [*:0]const u8) !*c.git_repository {
+    var repo: ?*c.git_repository = null;
+    const result = c.git_repository_open_ext(&repo, path, 0, null);
+    if (result == c.GIT_ENOTFOUND) return error.RepositoryNotFound;
+    if (result != 0) return error.FailedToOpenRepository;
+    return repo.?;
+}
+
 pub fn main() !void {
     // start libgit
     _ = c.git_libgit2_init();
@@ -99,9 +107,8 @@ pub fn main() !void {
     const cwd_path = try std.process.currentPathAlloc(io, allocator);
     defer allocator.free(cwd_path);
 
-    // init repo
-    var repo: ?*c.git_repository = null;
-    std.debug.assert(0 == c.git_repository_init(&repo, cwd_path.ptr, 0));
+    // find the repo in this directory or one of its parents
+    var repo = try openRepo(cwd_path.ptr);
     defer c.git_repository_free(repo);
 
     // init root widget
@@ -146,8 +153,7 @@ pub fn main() !void {
                     // ctrl+r: refresh by reopening the repo and recreating
                     // the root widget, preserving the currently selected tab
                     'r' => {
-                        var new_repo: ?*c.git_repository = null;
-                        std.debug.assert(0 == c.git_repository_init(&new_repo, cwd_path.ptr, 0));
+                        const new_repo = try openRepo(cwd_path.ptr);
 
                         const new_git_ui = g_ui.GitUI(Widget).init(allocator, new_repo) catch |err| {
                             c.git_repository_free(new_repo);
