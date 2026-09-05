@@ -297,6 +297,7 @@ pub fn GitStatusContent(comptime Widget: type) type {
         box: wgt.Box(Widget),
         filtered_statuses: std.ArrayList(Status),
         repo: ?*c.git_repository,
+        diffed_status_index: ?usize,
 
         const FocusKind = enum { status_list, diff };
 
@@ -333,9 +334,10 @@ pub fn GitStatusContent(comptime Widget: type) type {
                 .box = box,
                 .filtered_statuses = filtered_statuses,
                 .repo = repo,
+                .diffed_status_index = null,
             };
             status_content.getFocus().child_id = box.children.keys()[0];
-            try status_content.updateDiff(allocator);
+            try status_content.refreshDiffIfNeeded(allocator);
             return status_content;
         }
 
@@ -346,6 +348,8 @@ pub fn GitStatusContent(comptime Widget: type) type {
 
         pub fn build(self: *GitStatusContent(Widget), allocator: std.mem.Allocator, constraint: layout.Constraint, root_focus: *Focus) !void {
             self.clearGrid();
+            // refresh after queued inputs so only the final selection is diffed
+            try self.refreshDiffIfNeeded(allocator);
             if (self.filtered_statuses.items.len > 0) {
                 try self.box.build(allocator, constraint, root_focus);
             }
@@ -360,9 +364,6 @@ pub fn GitStatusContent(comptime Widget: type) type {
 
                     var index = inp.horizIndex(key, child.* == .git_status_list, diff_scroll_x) orelse blk: {
                         try child.input(allocator, key, root_focus);
-                        if (child.* == .git_status_list) {
-                            try self.updateDiff(allocator);
-                        }
                         break :blk current_index;
                     };
 
@@ -411,19 +412,37 @@ pub fn GitStatusContent(comptime Widget: type) type {
             return true;
         }
 
+        fn refreshDiffIfNeeded(self: *GitStatusContent(Widget), allocator: std.mem.Allocator) !void {
+            const status_list = &self.box.children.values()[0].widget.git_status_list;
+            const current = status_list.getSelectedIndex();
+            if (current == self.diffed_status_index) return;
+            try self.updateDiff(allocator);
+            self.diffed_status_index = current;
+        }
+
         fn updateDiff(self: *GitStatusContent(Widget), allocator: std.mem.Allocator) !void {
             const status_list = &self.box.children.values()[0].widget.git_status_list;
             if (status_list.getSelectedIndex()) |status_index| {
                 const status = status_list.statuses[status_index];
+
+                // get widget
+                var diff = &self.box.children.values()[1].widget.git_diff;
+                try diff.clearDiffs(allocator);
+                if (status.kind == .not_tracked) return;
 
                 // index
                 var index: ?*c.git_index = null;
                 std.debug.assert(0 == c.git_repository_index(&index, self.repo));
                 defer c.git_index_free(index);
 
-                // get widget
-                var diff = &self.box.children.values()[1].widget.git_diff;
-                try diff.clearDiffs(allocator);
+                // only diff this file; treat wildcard characters in its name literally
+                const path = try allocator.dupeZ(u8, status.path);
+                defer allocator.free(path);
+                var paths = [_][*c]u8{path.ptr};
+                var options: c.git_diff_options = undefined;
+                std.debug.assert(0 == c.git_diff_options_init(&options, c.GIT_DIFF_OPTIONS_VERSION));
+                options.flags = c.GIT_DIFF_DISABLE_PATHSPEC_MATCH;
+                options.pathspec = .{ .strings = &paths, .count = paths.len };
 
                 // status diff
                 var status_diff: ?*c.git_diff = null;
@@ -446,10 +465,10 @@ pub fn GitStatusContent(comptime Widget: type) type {
                         std.debug.assert(0 == c.git_tree_lookup(&commit_tree, self.repo, commit_oid));
                         defer c.git_tree_free(commit_tree);
 
-                        std.debug.assert(0 == c.git_diff_tree_to_index(&status_diff, self.repo, commit_tree, index, null));
+                        std.debug.assert(0 == c.git_diff_tree_to_index(&status_diff, self.repo, commit_tree, index, &options));
                     },
                     .not_added => {
-                        std.debug.assert(0 == c.git_diff_index_to_workdir(&status_diff, self.repo, index, null));
+                        std.debug.assert(0 == c.git_diff_index_to_workdir(&status_diff, self.repo, index, &options));
                     },
                     .not_tracked => return,
                 }
@@ -461,8 +480,8 @@ pub fn GitStatusContent(comptime Widget: type) type {
                 const delta_count = c.git_diff_num_deltas(status_diff);
                 for (0..delta_count) |delta_index| {
                     const delta = c.git_diff_get_delta(status_diff, delta_index);
-                    const path = std.mem.sliceTo(delta.*.old_file.path, 0);
-                    if (std.mem.eql(u8, path, status.path)) {
+                    const delta_path = std.mem.sliceTo(delta.*.old_file.path, 0);
+                    if (std.mem.eql(u8, delta_path, status.path)) {
                         std.debug.assert(0 == c.git_patch_from_diff(&patch_maybe, status_diff, delta_index));
                         break;
                     }
