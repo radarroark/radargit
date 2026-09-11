@@ -427,7 +427,7 @@ pub fn GitStatusContent(comptime Widget: type) type {
 
                 // get widget
                 var diff = &self.box.children.values()[1].widget.git_diff;
-                try diff.clearDiffs(allocator);
+                diff.clearDiffs(allocator);
                 if (status.kind == .not_tracked) return;
 
                 // index

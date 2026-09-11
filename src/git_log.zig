@@ -338,7 +338,7 @@ pub fn GitLog(comptime Widget: type) type {
                 defer c.git_diff_free(commit_diff);
 
                 var diff = &self.box.children.values()[1].widget.git_diff;
-                try diff.clearDiffs(allocator);
+                diff.clearDiffs(allocator);
 
                 const delta_count = c.git_diff_num_deltas(commit_diff);
                 for (0..delta_count) |delta_index| {

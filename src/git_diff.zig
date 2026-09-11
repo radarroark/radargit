@@ -168,7 +168,7 @@ pub fn GitDiff(comptime Widget: type) type {
             return self.box.getFocus();
         }
 
-        pub fn clearDiffs(self: *GitDiff(Widget), allocator: std.mem.Allocator) !void {
+        pub fn clearDiffs(self: *GitDiff(Widget), allocator: std.mem.Allocator) void {
             // clear patches
             for (self.patches.items) |patch| {
                 c.git_patch_free(patch);
@@ -195,17 +195,10 @@ pub fn GitDiff(comptime Widget: type) type {
             defer c.git_buf_dispose(&buf);
             const content = std.mem.sliceTo(buf.ptr, 0);
 
-            if (!std.unicode.utf8ValidateSlice(content)) {
-                // dont' display diffs with invalid unicode
-                var text_box = try wgt.TextBox.init(allocator, "Diff omitted due to invalid unicode", .{ .border_style = .hidden, .wrap_kind = .none });
-                errdefer text_box.deinit(allocator);
-                try self.box.children.values()[0].widget.scroll.child.box.children.put(allocator, text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });
-            } else {
-                // add new diff widget
-                var text_box = try wgt.TextBox.init(allocator, content, .{ .border_style = .hidden, .wrap_kind = .none });
-                errdefer text_box.deinit(allocator);
-                try self.box.children.values()[0].widget.scroll.child.box.children.put(allocator, text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });
-            }
+            const display_text = if (std.unicode.utf8ValidateSlice(content)) content else "Diff omitted due to invalid unicode";
+            var text_box = try wgt.TextBox.init(allocator, display_text, .{ .border_style = .hidden, .wrap_kind = .none });
+            errdefer text_box.deinit(allocator);
+            try self.box.children.values()[0].widget.scroll.child.box.children.put(allocator, text_box.getFocus().id, .{ .widget = .{ .text_box = text_box }, .rect = null, .min_size = null });
             self.diff_count += 1;
         }
 
